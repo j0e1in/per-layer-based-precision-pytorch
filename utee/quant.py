@@ -11,7 +11,7 @@ def compute_integral_part(input, overflow_rate):
     split_idx = int(overflow_rate * len(sorted_value))
     v = sorted_value[split_idx]
     if isinstance(v, Variable):
-        v = v.data.cpu().numpy()[0]
+        v = v.data.cpu().numpy().item()
     sf = math.ceil(math.log2(v+1e-12))
     return sf
 
@@ -19,6 +19,7 @@ def linear_quantize(input, sf, bits):
     assert bits >= 1, bits
     if bits == 1:
         return torch.sign(input) - 1
+
     delta = math.pow(2.0, -sf)
     bound = math.pow(2.0, bits-1)
     min_val = - bound
@@ -26,7 +27,11 @@ def linear_quantize(input, sf, bits):
     rounded = torch.floor(input / delta + 0.5)
 
     clipped_value = torch.clamp(rounded, min_val, max_val) * delta
-    return clipped_value
+
+    if bits <= 16:
+        return clipped_value.type(torch.half)
+    else:
+        return clipped_value
 
 def log_minmax_quantize(input, bits):
     assert bits >= 1, bits
@@ -54,11 +59,11 @@ def min_max_quantize(input, bits):
     assert bits >= 1, bits
     if bits == 1:
         return torch.sign(input) - 1
-    min_val, max_val = input.min(), input.max()
 
+    min_val, max_val = input.min(), input.max()
     if isinstance(min_val, Variable):
-        max_val = float(max_val.data.cpu().numpy()[0])
-        min_val = float(min_val.data.cpu().numpy()[0])
+        max_val = float(max_val.data.cpu().numpy().item())
+        min_val = float(min_val.data.cpu().numpy().item())
 
     input_rescale = (input - min_val) / (max_val - min_val)
 
@@ -160,9 +165,11 @@ class NormalQuant(nn.Module):
 def duplicate_model_with_quant(model, bits, overflow_rate=0.0, counter=10, type='linear'):
     """assume that original model has at least a nn.Sequential"""
     assert type in ['linear', 'minmax', 'log', 'tanh']
+
     if isinstance(model, nn.Sequential):
         l = OrderedDict()
         for k, v in model._modules.items():
+            # do not quantize the module if it's not one of these modules
             if isinstance(v, (nn.Conv2d, nn.Linear, nn.BatchNorm1d, nn.BatchNorm2d, nn.AvgPool2d)):
                 l[k] = v
                 if type == 'linear':
@@ -177,10 +184,12 @@ def duplicate_model_with_quant(model, bits, overflow_rate=0.0, counter=10, type=
                 l['{}_{}_quant'.format(k, type)] = quant_layer
             else:
                 l[k] = duplicate_model_with_quant(v, bits, overflow_rate, counter, type)
+
         m = nn.Sequential(l)
         return m
+
     else:
         for k, v in model._modules.items():
             model._modules[k] = duplicate_model_with_quant(v, bits, overflow_rate, counter, type)
-        return model
 
+        return model

@@ -1,3 +1,6 @@
+import sys
+sys.path.append('.')
+
 from utee import misc
 import os
 import os.path
