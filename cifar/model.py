@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
-from IPython import embed
+
 from collections import OrderedDict
 
 from utee import misc
@@ -66,8 +66,3 @@ def cifar100(n_channel, pretrained=None):
         assert isinstance(state_dict, (dict, OrderedDict)), type(state_dict)
         model.load_state_dict(state_dict)
     return model
-
-if __name__ == '__main__':
-    model = cifar10(128, pretrained='log/cifar10/best-135.pth')
-    embed()
-

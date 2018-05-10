@@ -14,7 +14,7 @@ from torch.autograd import Variable
 import dataset
 import model
 
-from IPython import embed
+
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR-X Example')
 parser.add_argument('--type', default='cifar10', help='cifar10|cifar100')

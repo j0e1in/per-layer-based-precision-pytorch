@@ -2,7 +2,7 @@ from utee import misc
 import os
 from imagenet import dataset
 print = misc.logger.info
-from IPython import embed
+
 
 known_models = [
     'mnist', 'svhn', # 28x28
@@ -163,9 +163,3 @@ def select(model_name, **kwargs):
     assert model_name in known_models, model_name
     kwargs.setdefault('model_root', os.path.expanduser('~/.torch/models'))
     return eval('{}'.format(model_name))(**kwargs)
-
-if __name__ == '__main__':
-    m1 = alexnet()
-    embed()
-
-

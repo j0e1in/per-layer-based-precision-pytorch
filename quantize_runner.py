@@ -121,7 +121,6 @@ args.input_size = 299 if 'inception' in args.type else args.input_size
 
 # types to run
 types = [
-    # 'mnist',
     'cifar10',
     'cifar100',
 ]
@@ -134,6 +133,8 @@ quant_methods = [
 ]
 
 # precision of weights and biases of each layer
+# list length should be number of layers * 2
+# [W1, b1, W2, b2, W3, b3, ...] => [bits of W1, bits for b1, ...]
 param_bits = [
     # cifar10, cifar100 => 16
     [32]*16,

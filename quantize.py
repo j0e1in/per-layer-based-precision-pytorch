@@ -88,6 +88,7 @@ if args.param_bits < 32:
 
     model_quant.load_state_dict(state_dict_quant)
 
+
 # quantize forward activation
 if args.fwd_bits < 32:
     model_quant = quant.duplicate_model_with_quant(model_quant, bits=args.fwd_bits, overflow_rate=args.overflow_rate,
@@ -99,30 +100,13 @@ if args.fwd_bits < 32:
     save_model(model_quant, model_name=args.type+'_quant')
 
 
-print("Evaluating raw model")
-# eval raw model
-start = time.time()
-acc1, acc5 = misc.eval_model(
-    model_raw, val_ds, ngpu=args.ngpu, is_imagenet=is_imagenet)
-duration = time.time() - start
-print(f"Raw model eval duration: {duration}")
-
-print(model_raw)
-res_str = "type={}, quant_method={}, param_bits={}, bn_bits={}, fwd_bits={}, overflow_rate={}, acc1={:.4f}, acc5={:.4f}".format(
-    args.type, args.quant_method, args.param_bits, args.bn_bits, args.fwd_bits, args.overflow_rate, acc1, acc5)
-print(res_str)
-with open('acc1_acc5.txt', 'a') as f:
-    f.write('raw: ' + res_str + '\n')
-
-
-print("Evaluating quant model")
 # eval quant model
 start = time.time()
 acc1, acc5 = misc.eval_model(model_quant, val_ds_quant, ngpu=args.ngpu, is_imagenet=is_imagenet)
 duration = time.time() - start
 print(f"Quant model eval duration: {duration}")
 
-# print sf
+
 print(model_quant)
 res_str = "type={}, quant_method={}, param_bits={}, bn_bits={}, fwd_bits={}, overflow_rate={}, acc1={:.4f}, acc5={:.4f}".format(
     args.type, args.quant_method, args.param_bits, args.bn_bits, args.fwd_bits, args.overflow_rate, acc1, acc5)
