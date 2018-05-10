@@ -1,6 +1,6 @@
 # Per-Layer Based Precision in PyTorch
 
-One can assign different precision for different layers as the same idea from [this paper](http://proceedings.mlr.press/v70/sakr17a/sakr17a.pdf) to experiment trade-off between quantization bits precision and accuracy.
+One can assign different precision for different layers (as the same idea from [this paper](http://proceedings.mlr.press/v70/sakr17a/sakr17a.pdf)) to experiment the best settings of the trade-off between quantization bits and accuracy.
 
 A small sample of experiment results can be seen from [here](https://docs.google.com/spreadsheets/d/13Vna79bhMChdDqkvx2IUVze24kbmV0jj-79lYkhJ-Gs/edit?usp=sharing)
 
