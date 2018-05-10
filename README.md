@@ -21,7 +21,7 @@ Use uniform precision as the same as original repo: (runs only one test)
 python quantize.py --type cifar10 --quant_method linear --param_bits 8 --fwd_bits 8 --bn_bits 8 --gpu 0
 ```
 
-Define precision of each layer in quantize_runner.py `param_bits`, `batch_norm_bits`, `layer_output_bits` and other settings and then run:
+Define precision of each layer in quantize_runner.py `param_bits`(--param_bits), `batch_norm_bits`(--bn_bits), `layer_output_bits`(--fwd_bits) and other settings, and then run:
 (currently only support uniform precision for `layer_output_bits`)
 ```
 python quantize_runner.py
@@ -29,6 +29,9 @@ python quantize_runner.py
 
 Results will be written to both result.csv and result.pkl.
 
+## TODO
+
+Add per-layer precision support for `layer_output_bits`
 
 ## Attribution
 
