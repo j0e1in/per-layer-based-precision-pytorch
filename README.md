@@ -31,6 +31,8 @@ python quantize_runner.py
 
 Results will be written to both result.csv and result.pkl.
 
+**NOTE**: For detailed project structure explanation please refer to README_orig.md
+
 ## TODO
 
 Add per-layer precision support for `layer_output_bits`
