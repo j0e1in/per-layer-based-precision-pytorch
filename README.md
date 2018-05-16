@@ -15,6 +15,7 @@ pip packages:
 - torchvision
 - numpy
 - pandas
+- opencv-python
 
 ## Usage
 
