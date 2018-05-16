@@ -226,8 +226,10 @@ except (EOFError, FileNotFoundError):
 
 
 for typ in types:
-    # Load
-    mk = model_kwargs[typ] if typ in model_kwargs else {}
+    # If model_root is specified, assume user wants to use self-trained model
+    if args.model_root:
+        # Load custom keyward arguments for the model
+        mk = model_kwargs[typ] if typ in model_kwargs else {}
 
     # Load model and dataset fetcher
     model_raw, ds_fetcher, is_imagenet = selector.select(typ, model_root=args.model_root, **mk)
