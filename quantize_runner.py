@@ -14,40 +14,40 @@ import torch.backends.cudnn as cudnn
 from utee import misc, selector, quant
 
 
-def save_result(result):
-    result.to_csv('result.csv')
+def save_result(result, result_file='result'):
+    result.to_csv(f'{result_file}.csv')
 
-    with open('result.pkl', 'wb') as f:
+    with open(f'{result_file}.pkl', 'wb') as f:
         pickle.dump(result, f)
 
 
 def bits_len_match(model, param_set, type):
-    if not isinstance(param_set, list) \
+    if not isinstance(param_set, list)\
     or not isinstance(param_set[0], list):
-        return False
+        raise ValueError("param_set should be a list")
 
     modules = model.named_modules()
     num = 0
 
-    for k in model.state_dict().keys():
-        if 'running' in k:
-            if type == 'batch_norm':
-                num += 1
-        else:
-            if type == 'param':
+    if type == 'param':
+        for k in model.state_dict().keys():
+            if not 'running' in k:
                 num += 1
 
-    for name, mod in modules:
-        if name and isinstance(mod, \
-            (nn.Conv2d, nn.Linear, nn.BatchNorm1d, nn.BatchNorm2d, nn.AvgPool2d)):
-            if type == 'output':
+    if type == 'batch_norm':
+        for k in model.state_dict().keys():
+            if 'running' in k:
                 num += 1
+
+    if type == 'layer_output':
+        for name, mod in modules:
+            if name and isinstance(mod, \
+                (nn.Conv2d, nn.Linear, nn.BatchNorm1d, nn.BatchNorm2d, nn.AvgPool2d)):
+                    num += 1
 
     for s in param_set:
         if len(s) != num:
-            return False
-
-    return True
+            raise ValueError(f"``{type}`` should have {num} elements in each list, but got {len(s)}")
 
 
 def quantize_model(model_orig,
@@ -91,12 +91,13 @@ def quantize_model(model_orig,
 
     model.load_state_dict(state_dict_quant)
 
-    model = quant.duplicate_model_with_quant(model,
-                        bits=layer_output_bits,
+    model = quant.quantize_model_per_layer_output(model,
+                        layer_output_bits=layer_output_bits,
                         overflow_rate=overflow_rate,
                         counter=n_sample,
                         type=quant_method)
 
+    # To actually reduce param size by changing data type to float16
     # if layer_output_bits <= 16:
     #     model.half()
 
@@ -106,7 +107,7 @@ def quantize_model(model_orig,
 parser = argparse.ArgumentParser(description='PyTorch SVHN Example')
 parser.add_argument('--type', default='cifar10', help='|'.join(selector.known_models))
 parser.add_argument('--model_root', default='~/.torch/models/', help='folder to save the model')
-parser.add_argument('--data_root', default='/tmp/public_dataset/pytorch/', help='folder to save the model')
+parser.add_argument('--data_root', default='~/public_dataset/pytorch/', help='folder to save the model')
 parser.add_argument('--logdir', default='log/default', help='folder to save to the log')
 parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
 parser.add_argument('--input_size', type=int, default=224, help='input size of image')
@@ -118,11 +119,11 @@ args.model_root = misc.expand_user(args.model_root)
 args.data_root = misc.expand_user(args.data_root)
 args.input_size = 299 if 'inception' in args.type else args.input_size
 
-
 # types to run
 types = [
-    'cifar10',
-    'cifar100',
+    # 'cifar10',
+    # 'cifar100',
+    'mnist'
 ]
 
 # quantization methods to test
@@ -132,46 +133,74 @@ quant_methods = [
     'tanh'
 ]
 
-# precision of weights and biases of each layer
-# list length should be number of layers * 2
-# [W1, b1, W2, b2, W3, b3, ...] => [bits of W1, bits for b1, ...]
-param_bits = [
-    # cifar10, cifar100 => 16
-    [32]*16,
-    [16]*16,
-    [12]*16,
-    [8]*16,
-    [6]*16,
-    [4]*16,
-    [16]*4 + [4]*8 + [16]*4,
-    [16]*4 + [4]*8 + [8]*4,
-    [16]*4 + [2]*8 + [16]*4,
-    [16]*2 + [2]*12 + [16]*2,
-    [8]*4 + [4]*8 + [8]*4,
-    [16]*4 + [8]*12,
-    [16]*4 + [4]*12,
-    [16]*4 + [2]*12,
-    [16]*2 + [8]*14,
-    [16]*2 + [4]*14,
-]
+model_bits = {
+    'mnist': {
+        'param_bits': [
+            [32]*8,
+            [16]*8,
+            [8]*8,
+            [4]*8,
+            [7, 7, 5, 5, 4, 4, 4, 4]
+        ],
+        'batch_norm_bits': [
+            []
+        ],
+        'layer_output_bits': [
+            [32]*4,
+            [16]*4,
+            [8]*4,
+            [4]*4,
+        ],
+    },
 
-# precision of batch norm mean and variance of each layer
-batch_norm_bits = [
-    # cifar10, cifar100 => 14
-    [32]*14,
-    [16]*14,
-    [12]*14,
-    [8]*14,
-]
+    'cifar10': {
+        # precision of weights and biases of each layer
+        # list length should be number of layers * 2
+        # [W1, b1, W2, b2, W3, b3, ...] => [bits of W1, bits for b1, ...]
+        'param_bits': [
+            # cifar10, cifar100 => 16
+            [32]*16,
+            [16]*16,
+            [12]*16,
+            [8]*16,
+            [6]*16,
+            [4]*16,
+            [16]*4 + [4]*8 + [16]*4,
+            [16]*4 + [4]*8 + [8]*4,
+            [16]*4 + [2]*8 + [16]*4,
+            [16]*2 + [2]*12 + [16]*2,
+            [8]*4 + [4]*8 + [8]*4,
+            [16]*4 + [8]*12,
+            [16]*4 + [4]*12,
+            [16]*4 + [2]*12,
+            [16]*2 + [8]*14,
+            [16]*2 + [4]*14,
+            [10, 10, 12, 12, 10, 10, 9, 9, 8, 8, 6, 6, 6, 6, 2, 2]
+        ],
+        'batch_norm_bits': [
+            # cifar10, cifar100 => 14
+            [32]*14,
+            [16]*14,
+        ],
+        # # precision of output of each layer
+        'layer_output_bits': [
+            [32]*15,
+            [16]*15,
+            [12]*15,
+            [8]*15,
+            [4]*15,
+            [10, 10, 12, 12, 10, 10, 9, 9, 8, 8, 6, 6, 6, 6, 2]
+        ]
+    },
+}
 
-# # precision of output of each layer
-layer_output_bits = [
-    32,
-    16,
-    12,
-    8,
-    4,
-]
+model_bits['cifar100'] = model_bits['cifar10']
+
+model_kwargs = {
+    'mnist': {
+        'n_hiddens': [512, 512, 512]
+    }
+}
 
 
 # check types are valid
@@ -192,17 +221,21 @@ count = 0
 try:
     with open('result.pkl', 'rb') as f:
         result = pickle.load(f)
-except EOFError:
+except (EOFError, FileNotFoundError):
     result = pd.DataFrame()
 
 
 for typ in types:
-    # Load model and dataset fetcher
-    model_raw, ds_fetcher, is_imagenet = selector.select(typ, model_root=args.model_root)
+    # Load
+    mk = model_kwargs[typ] if typ in model_kwargs else {}
 
-    # Check number of bits in each settings are correct
-    assert bits_len_match(model_raw, param_bits, 'param')
-    assert bits_len_match(model_raw, batch_norm_bits, 'batch_norm')
+    # Load model and dataset fetcher
+    model_raw, ds_fetcher, is_imagenet = selector.select(typ, model_root=args.model_root, **mk)
+
+    # Check number of elements in each settings are correct
+    bits_len_match(model_raw, model_bits[typ]['param_bits'], 'param')
+    bits_len_match(model_raw, model_bits[typ]['batch_norm_bits'], 'batch_norm')
+    bits_len_match(model_raw, model_bits[typ]['layer_output_bits'], 'layer_output')
 
     # Load dataset
     val_ds = ds_fetcher(args.batch_size,
@@ -210,10 +243,12 @@ for typ in types:
                         train=False,
                         input_size=args.input_size)
 
+    result_filename = f'result'
+
     for q_method in quant_methods:
-        for p_bits in param_bits:
-            for b_bits in batch_norm_bits:
-                for l_bits in layer_output_bits:
+        for p_bits in model_bits[typ]['param_bits']:
+            for b_bits in model_bits[typ]['batch_norm_bits']:
+                for l_bits in model_bits[typ]['layer_output_bits']:
                     model = quantize_model(
                         model_raw, q_method, p_bits, b_bits, l_bits,
                             overflow_rate=args.overflow_rate, n_sample=len(val_ds))
@@ -221,6 +256,7 @@ for typ in types:
                     start = time.time()
                     acc1, acc5 = misc.eval_model(model, val_ds, is_imagenet=is_imagenet)
                     duration = time.time() - start
+                    print(f"{typ}, {q_method}, {p_bits}, {b_bits}, {l_bits}")
                     print(f"Eval duration: {duration}, acc1: {acc1}, acc5: {acc5}")
 
                     rec = {
@@ -239,7 +275,6 @@ for typ in types:
 
                     count += 1
                     if count % 10 == 0:
-                        save_result(result)
+                        save_result(result, result_filename)
 
-print(result)
-save_result(result)
+save_result(result, result_filename)

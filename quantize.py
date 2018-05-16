@@ -91,7 +91,7 @@ if args.param_bits < 32:
 
 # quantize forward activation
 if args.fwd_bits < 32:
-    model_quant = quant.duplicate_model_with_quant(model_quant, bits=args.fwd_bits, overflow_rate=args.overflow_rate,
+    model_quant = quant.quantize_model_layer_output(model_quant, bits=args.fwd_bits, overflow_rate=args.overflow_rate,
                                                    counter=args.n_sample, type=args.quant_method)
     if args.fwd_bits <= 16:
         model_quant.half()
