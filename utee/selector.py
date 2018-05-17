@@ -19,6 +19,7 @@ known_models = [
 def mnist(cuda=True, model_root=None, **kwargs):
     print("Building and initializing mnist parameters")
     from mnist import model, dataset
+
     use_model_zoo = False if model_root else True
     m = model.mnist(pretrained=os.path.join(model_root, 'mnist.pth'),
                     use_model_zoo=use_model_zoo,
@@ -37,20 +38,27 @@ def svhn(cuda=True, model_root=None):
     return m, dataset.get, False
 
 
-def cifar10(cuda=True, model_root=None):
+def cifar10(cuda=True, model_root=None, **kwargs):
     print("Building and initializing cifar10 parameters")
     from cifar import model, dataset
-    m = model.cifar10(128, pretrained=os.path.join(model_root, 'cifar10.pth'))
+
+    use_model_zoo = False if model_root else True
+    m = model.cifar10(pretrained=os.path.join(model_root, 'cifar10.pth'),
+                      use_model_zoo=use_model_zoo,
+                      **kwargs)
     if cuda:
         m = m.cuda()
     return m, dataset.get10, False
 
 
-def cifar100(cuda=True, model_root=None):
+def cifar100(cuda=True, model_root=None, **kwargs):
     print("Building and initializing cifar100 parameters")
     from cifar import model, dataset
-    m = model.cifar100(128, pretrained=os.path.join(
-        model_root, 'cifar100.pth'))
+
+    use_model_zoo = False if model_root else True
+    m = model.cifar100(pretrained=os.path.join(model_root, 'cifar100.pth'),
+                       use_model_zoo=use_model_zoo,
+                       **kwargs)
     if cuda:
         m = m.cuda()
     return m, dataset.get100, False
